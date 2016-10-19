@@ -9,6 +9,11 @@ import time
 import requests
 from yaml import load
 
+from six import PY2
+
+if PY2:
+    FileNotFoundError = OSError
+
 from exchangelib import close_connections
 from exchangelib.account import Account
 from exchangelib.autodiscover import discover
@@ -529,10 +534,10 @@ class BaseItemTest(EWSTest):
     def setUpClass(cls):
         if cls is BaseItemTest:
             raise unittest.SkipTest("Skip BaseItemTest, it's only for inheritance")
-        super().setUpClass()
+        super(BaseItemTest, cls).setUpClass()
 
     def setUp(self):
-        super().setUp()
+        super(BaseItemTest, self).setUp()
         self.test_folder = getattr(self.account, self.TEST_FOLDER)
         self.assertEqual(self.test_folder.DISTINGUISHED_FOLDER_ID, self.TEST_FOLDER)
         self.test_folder.filter(categories__contains=self.categories).delete()

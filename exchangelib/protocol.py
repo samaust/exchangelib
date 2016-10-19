@@ -10,7 +10,9 @@ from multiprocessing.pool import ThreadPool
 import logging
 from threading import Lock
 import random
+from future.utils import with_metaclass
 
+from future.utils import raise_from
 from requests import adapters, Session
 
 from .credentials import Credentials
@@ -31,7 +33,7 @@ def close_connections():
     CachingProtocol._protocol_cache.clear()
 
 
-class BaseProtocol:
+class BaseProtocol(object):
     # Base class for Protocol which implements the bare essentials
 
     # The maximum number of sessions (== TCP connections, see below) we will open to this service endpoint. Keep this
@@ -124,7 +126,7 @@ class BaseProtocol:
         try:
             socket.gethostbyname_ex(self.server)[2][0]
         except socket.gaierror as e:
-            raise TransportError("Server '%s' does not exist" % self.server) from e
+            raise_from(TransportError("Server '%s' does not exist" % self.server), e)
         return test_credentials(protocol=self)
 
     def __repr__(self):
@@ -155,15 +157,15 @@ class CachingProtocol(type):
             protocol = cls._protocol_cache.get(_protocol_cache_key)
             if protocol is None:
                 log.debug("Protocol __call__ cache miss. Adding key '%s'", str(_protocol_cache_key))
-                protocol = super().__call__(*args, **kwargs)
+                protocol = super(CachingProtocol, cls).__call__(*args, **kwargs)
                 cls._protocol_cache[_protocol_cache_key] = protocol
         log.debug('_protocol_cache_lock released')
         return protocol
 
 
-class Protocol(BaseProtocol, metaclass=CachingProtocol):
+class Protocol(with_metaclass(CachingProtocol, BaseProtocol)):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(Protocol, self).__init__(*args, **kwargs)
 
         scheme = 'https' if self.has_ssl else 'https'
         self.wsdl_url = '%s://%s/EWS/Services.wsdl' % (scheme, self.server)
@@ -212,7 +214,7 @@ class EWSSession(Session):
     def __init__(self, protocol):
         self.session_id = random.randint(1, 32767)  # Used for debugging messages in services
         self.protocol = protocol
-        super().__init__()
+        super(EWSSession, self).__init__()
 
     def close_socket(self, url):
         # Close underlying socket. This ensures we don't leave stray sockets around after program exit.
@@ -226,7 +228,7 @@ class EWSSession(Session):
                 conn.sock.close()
 
     def __enter__(self):
-        return super().__enter__()
+        return super(EWSSession, self).__enter__()
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         if exc_type is None:

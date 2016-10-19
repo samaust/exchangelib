@@ -228,7 +228,6 @@ class Q:
             #     Exact, IgnoreCase, IgnoreNonSpacingCharacters, IgnoreCaseAndNonSpacingCharacters
             # I'm unsure about non-spacing characters, but as I read
             #    https://en.wikipedia.org/wiki/Graphic_character#Spacing_and_non-spacing_characters
-            # we shouldn't ignore them ('a' would match both 'a' and 'å', the latter having a non-spacing character).
             if op in {cls.EXACT, cls.IEXACT}:
                 match_mode = 'FullString'
             elif op in (cls.CONTAINS, cls.ICONTAINS):

@@ -4,6 +4,8 @@ from collections import defaultdict
 
 from cached_property import threaded_cached_property
 
+from future.utils import raise_from
+
 from .autodiscover import discover
 from .credentials import DELEGATE, IMPERSONATION
 from .errors import ErrorFolderNotFound, ErrorAccessDenied
@@ -89,7 +91,7 @@ class Account:
             log.debug('Searching default %s folder in full folder list', fld_class.__name__)
             flds = self.folders[fld_class]
             if not flds:
-                raise ErrorFolderNotFound('No useable default %s folders' % fld_class.__name__) from e
+                raise_from(ErrorFolderNotFound('No useable default %s folders' % fld_class.__name__), e)
             assert len(flds) == 1, 'Multiple possible default %s folders: %s' % (
                 fld_class.__name__, [str(f) for f in flds])
             return flds[0]

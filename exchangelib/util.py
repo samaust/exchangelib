@@ -2,12 +2,21 @@ import re
 from xml.etree.ElementTree import Element
 import logging
 import time
-from threading import get_ident
+from collections import Iterator
+from future.utils import PY3
+from future.moves.urllib.parse import urlparse
+
+if PY3:
+    from threading import get_ident
+else:
+    from thread import get_ident
+
 from datetime import datetime
 from copy import deepcopy
 import itertools
 from decimal import Decimal
 
+from future.utils import raise_from
 from .errors import TransportError, RateLimitError, RedirectError, RelativeRedirect
 
 log = logging.getLogger(__name__)
@@ -15,9 +24,9 @@ ElementType = type(Element('x'))  # Type is auto-generated inside cElementTree
 
 
 # Regex of UTF-8 control characters that are illegal in XML 1.0 (and XML 1.1)
-_illegal_xml_chars_RE = re.compile('[\x00-\x08\x0b\x0c\x0e-\x1F\uD800-\uDFFF\uFFFE\uFFFF]')
+_illegal_xml_chars_RE = re.compile(u'[\x00-\x08\x0b\x0c\x0e-\x1F\uD800-\uDFFF\uFFFE\uFFFF]')
 # UTF-8 byte order mark which may precede the XML from an Exchange server
-BOM = '\xef\xbb\xbf'
+BOM = u'\xef\xbb\xbf'
 
 
 def chunkify(iterable, chunksize):
@@ -155,14 +164,14 @@ def to_xml(text, encoding):
             except IndexError:
                 offending_line = ''
             offending_excerpt = offending_line[max(0, col_no - 20):col_no + 20].decode('ascii', 'ignore')
-            raise ParseError('%s\nOffending text: [...]%s[...]' % (str(e), offending_excerpt)) from e
+            raise_from(ParseError('%s\nOffending text: [...]%s[...]' % (str(e), offending_excerpt)), e)
 
 
 def is_xml(text):
     """
     Helper function. Lightweight test if response is an XML doc
     """
-    return text.lstrip(BOM)[0:5] == '<?xml'
+    return text.lstrip(BOM)[0:5] == u'<?xml'
 
 
 class DummyRequest:
@@ -180,12 +189,11 @@ def get_domain(email):
     try:
         return email.split('@')[1].lower().strip()
     except (IndexError, AttributeError) as e:
-        raise ValueError("'%s' is not a valid email" % email) from e
+        raise_from(ValueError("'%s' is not a valid email" % email), e)
 
 
 def split_url(url):
-    from urllib import parse
-    parsed_url = parse.urlparse(url)
+    parsed_url = urlparse(url)
     # Use netloc instead og hostname since hostname is None if URL is relative
     return parsed_url.scheme == 'https', parsed_url.netloc.lower(), parsed_url.path
 
@@ -275,7 +283,7 @@ Response headers: %(response_headers)s'''
             try:
                 r = session.post(url=url, headers=headers, data=data, allow_redirects=False, timeout=timeout,
                                  verify=verify)
-            except (requests.exceptions.ChunkedEncodingError, requests.exceptions.ConnectionError, ConnectionResetError,
+            except (requests.exceptions.ChunkedEncodingError, requests.exceptions.ConnectionError,
                     requests.exceptions.ReadTimeout, SocketTimeout):
                 log.debug(
                     'Session %(session_id)s thread %(thread_id)s: timeout or connection error POST\'ing to %(url)s',

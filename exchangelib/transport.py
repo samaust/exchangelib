@@ -1,6 +1,8 @@
 import logging
 from xml.etree.ElementTree import tostring
 
+from future.utils import raise_from
+
 import requests.sessions
 from requests.auth import HTTPBasicAuth, HTTPDigestAuth
 from requests_ntlm import HttpNtlmAuth
@@ -127,7 +129,7 @@ def get_auth_instance(credentials, auth_type):
     try:
         model = AUTH_TYPE_MAP[auth_type]
     except KeyError as e:
-        raise ValueError("Authentication type '%s' not supported" % auth_type) from e
+        raise_from(ValueError("Authentication type '%s' not supported" % auth_type), e)
     else:
         if model is None:
             return None
@@ -141,7 +143,7 @@ def get_auth_type(auth):
     try:
         return AUTH_CLASS_MAP[auth.__class__]
     except KeyError as e:
-        raise ValueError("Authentication model '%s' not supported" % auth.__class__) from e
+        raise_from(ValueError("Authentication model '%s' not supported" % auth.__class__), e)
 
 
 def get_autodiscover_authtype(service_endpoint, data, timeout, verify):

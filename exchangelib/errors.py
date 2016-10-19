@@ -1,7 +1,7 @@
 """
 Stores errors specific to exchangelib, and mirrors all the possible errors that EWS can return.
 """
-from urllib import parse
+from future.moves.urllib.parse import urlparse
 
 
 class EWSError(Exception):
@@ -10,7 +10,7 @@ class EWSError(Exception):
 
     """
     def __init__(self, value):
-        super().__init__(value)
+        super(EWSError, self).__init__(value)
         self.value = value
 
     def __str__(self):
@@ -41,11 +41,11 @@ class UnauthorizedError(EWSError):
 
 class RedirectError(TransportError):
     def __init__(self, url):
-        parsed_url = parse.urlparse(url)
+        parsed_url = urlparse(url)
         self.url = url
         self.server = parsed_url.hostname.lower()
         self.has_ssl = parsed_url.scheme == 'https'
-        super().__init__(str(self))
+        super(RedirectError, self).__init__(str(self))
 
     def __str__(self):
         return 'We were redirected to %s' % self.url
@@ -70,7 +70,7 @@ class AutoDiscoverCircularRedirect(AutoDiscoverError):
 class AutoDiscoverRedirect(AutoDiscoverError):
     def __init__(self, redirect_email):
         self.redirect_email = redirect_email
-        super().__init__(str(self))
+        super(AutoDiscoverRedirect, self).__init__(str(self))
 
     def __str__(self):
         return 'AutoDiscover redirects to %s' % self.redirect_email

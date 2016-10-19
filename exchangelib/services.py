@@ -15,6 +15,7 @@ import itertools
 from xml.parsers.expat import ExpatError
 import traceback
 
+from future.utils import raise_from
 from . import errors
 from .errors import EWSWarning, TransportError, SOAPError, ErrorTimeoutExpired, ErrorBatchProcessingStopped, \
     ErrorQuotaExceeded, ErrorCannotDeleteObject, ErrorCreateItemAccessDenied, ErrorFolderNotFound, \
@@ -48,7 +49,7 @@ ITEM_TRAVERSAL_CHOICES = (SHALLOW, SOFT_DELETED, ASSOCIATED)
 FOLDER_TRAVERSAL_CHOICES = (SHALLOW, DEEP, SOFT_DELETED)
 
 
-class EWSService:
+class EWSService(object):
     SERVICE_NAME = None  # The name of the SOAP service
     element_container_name = None  # The name of the XML element wrapping the collection of returned items
     ERRORS_TO_CATCH_IN_RESPONSE = EWSWarning # Treat the following errors as warnings when contained in an element
@@ -119,7 +120,7 @@ class EWSService:
             try:
                 soap_response_payload = to_xml(r.text, encoding=r.encoding or 'utf-8')
             except ExpatError as e:
-                raise SOAPError('SOAP response is not XML: %s' % e) from e
+                raise_from(SOAPError('SOAP response is not XML: %s' % e), e)
             try:
                 res = self._get_soap_payload(soap_response=soap_response_payload)
             except (ErrorInvalidSchemaVersionForMailboxVersion, ErrorInvalidServerVersion):
@@ -204,7 +205,7 @@ class EWSService:
         try:
             return self._raise_errors(code=code, text=text, xml=xml)
         except ErrorBatchProcessingStopped as e:
-            raise EWSWarning(e.value) from e
+            raise_from(EWSWarning(e.value), e)
 
     @staticmethod
     def _raise_errors(code, text, xml):
@@ -218,8 +219,8 @@ class EWSService:
             raise vars(errors)[code](text)
         except KeyError as e:
             # Should not happen
-            raise TransportError('Unknown ResponseCode in ResponseMessage: %s (MessageText: %s, MessageXml: %s)' % (
-                code, text, xml)) from e
+            raise_from(TransportError('Unknown ResponseCode in ResponseMessage: %s (MessageText: %s, MessageXml: %s)' % (
+                code, text, xml)), e)
 
     def _get_elements_in_response(self, response):
         assert isinstance(response, list)
@@ -300,6 +301,10 @@ class GetServerTimeZones(EWSService):
     SERVICE_NAME = 'GetServerTimeZones'
     element_container_name = '{%s}TimeZoneDefinitions' % MNS
 
+    def __init__(self, *args, **kwargs):
+        super(GetServerTimeZones, self).__init__(*args, **kwargs)
+        self.element_name = '{%s}TimeZoneDefinition' % TNS
+
     def call(self, **kwargs):
         if self.protocol.version.build < EXCHANGE_2010:
             raise NotImplementedError('%s is only supported for Exchange 2010 servers and later' % self.SERVICE_NAME)
@@ -327,6 +332,11 @@ class GetRoomLists(EWSService):
     SERVICE_NAME = 'GetRoomLists'
     element_container_name = '{%s}RoomLists' % MNS
 
+    def __init__(self, *args, **kwargs):
+        super(GetRoomLists, self).__init__(*args, **kwargs)
+        from .folders import RoomList
+        self.element_name = RoomList.response_tag()
+
     def call(self, **kwargs):
         if self.protocol.version.build < EXCHANGE_2010:
             raise NotImplementedError('%s is only supported for Exchange 2010 servers and later' % self.SERVICE_NAME)
@@ -345,7 +355,12 @@ class GetRooms(EWSService):
     SERVICE_NAME = 'GetRooms'
     element_container_name = '{%s}Rooms' % MNS
 
-    def call(self, **kwargs):
+    def __init__(self, *args, **kwargs):
+        super(GetRooms, self).__init__(*args, **kwargs)
+        from .folders import Room
+        self.element_name = Room.response_tag()
+
+    def call(self, roomlist, **kwargs):
         if self.protocol.version.build < EXCHANGE_2010:
             raise NotImplementedError('%s is only supported for Exchange 2010 servers and later' % self.SERVICE_NAME)
         elements = super().call(**kwargs)
@@ -668,11 +683,22 @@ class FindFolder(EWSFolderService, PagingEWSMixIn):
     """
     SERVICE_NAME = 'FindFolder'
     element_container_name = '{%s}Folders' % TNS
+    # See http://msdn.microsoft.com/en-us/library/aa564009(v=exchg.150).aspx
+    extra_element_names = [
+        '{%s}CalendarFolder' % TNS,
+        '{%s}ContactsFolder' % TNS,
+        '{%s}SearchFolder' % TNS,
+        '{%s}TasksFolder' % TNS,
+    ]
 
-    def call(self, **kwargs):
-        return self._paged_call(**kwargs)
+    def __init__(self, *args, **kwargs):
+        super(FindFolder, self).__init__(*args, **kwargs)
+        self.element_name = '{%s}Folder' % TNS
 
-    def _get_payload(self, additional_fields, shape, depth, offset=0):
+    def call(self, folder, **kwargs):
+        return self._paged_call(folder=folder, **kwargs)
+
+    def _get_payload(self, folder, additional_fields=None, shape=IdOnly, depth=DEEP, offset=0):
         findfolder = create_element('m:%s' % self.SERVICE_NAME, Traversal=depth)
         foldershape = create_element('m:FolderShape')
         add_xml_child(foldershape, 't:BaseShape', shape)
@@ -699,10 +725,22 @@ class GetFolder(EWSAccountService):
     """
     SERVICE_NAME = 'GetFolder'
     element_container_name = '{%s}Folders' % MNS
+    # See http://msdn.microsoft.com/en-us/library/aa564009(v=exchg.150).aspx
+    extra_element_names = [
+        '{%s}CalendarFolder' % TNS,
+        '{%s}ContactsFolder' % TNS,
+        '{%s}SearchFolder' % TNS,
+        '{%s}TasksFolder' % TNS,
+    ]
 
-    def _get_payload(self, distinguished_folder_id, additional_fields, shape):
-        from .credentials import DELEGATE
-        from .folders import Mailbox
+    def __init__(self, *args, **kwargs):
+        super(GetFolder, self).__init__(*args, **kwargs)
+        self.element_name = '{%s}Folder' % TNS
+
+    def call(self, folder, **kwargs):
+        return self._get_elements(payload=self._get_payload(folder, **kwargs), account=folder.account)
+
+    def _get_payload(self, folder, additional_fields=None, shape=IdOnly):
         getfolder = create_element('m:%s' % self.SERVICE_NAME)
         foldershape = create_element('m:FolderShape')
         add_xml_child(foldershape, 't:BaseShape', shape)
@@ -784,6 +822,10 @@ class ResolveNames(EWSService):
     SERVICE_NAME = 'ResolveNames'
     element_container_name = '{%s}ResolutionSet' % MNS
 
+    def __init__(self, *args, **kwargs):
+        super(ResolveNames, self).__init__(*args, **kwargs)
+        self.element_name = '{%s}Resolution' % TNS
+    
     def _get_payload(self, unresolved_entries, return_full_contact_data=False):
         payload = create_element(
             'm:%s' % self.SERVICE_NAME,

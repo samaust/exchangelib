@@ -35,6 +35,7 @@ Change Log
 
 1.7.0
 -----
+* Add Python 2 compatibility
 * Added the ``is_service_account`` flag to ``Credentials``. ``is_service_account=False`` disables the fault-tolerant error
   handling policy and enables immediate failures.
 * ``Configuration`` now expects a single ``credentials`` attribute instead of separate ``username`` and ``password``

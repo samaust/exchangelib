@@ -20,7 +20,7 @@ setup(
     long_description=read('README.rst'),
     license='BSD',
     keywords='Exchange EWS autodiscover',
-    install_requires=['requests>=2.7', 'requests_ntlm>=0.2.0', 'dnspython>=1.14.0', 'pytz', 'lxml', 'cached_property'],
+    install_requires=['requests>=2.7', 'requests_ntlm>=0.2.0', 'dnspython>=1.14.0', 'pytz', 'lxml', 'cached_property', 'future'],
     packages=['exchangelib'],
     tests_require=['PyYAML'],
     test_suite='tests',
@@ -30,6 +30,7 @@ setup(
         'Development Status :: 5 - Production/Stable',
         'Topic :: Communications',
         'License :: OSI Approved :: BSD License',
-        'Programming Language :: Python :: 3 :: Only',
+        'Programming Language :: Python :: 2'
+        'Programming Language :: Python :: 3',
     ],
 )

@@ -4,6 +4,7 @@ from xml.etree.ElementTree import ParseError
 import requests.sessions
 import requests.adapters
 
+from future.utils import raise_from
 from .errors import UnauthorizedError, TransportError, EWSWarning
 from .transport import TNS, SOAPNS, dummy_xml, get_auth_instance
 from .util import is_xml, to_xml, post_ratelimited
@@ -259,7 +260,7 @@ class Version:
             if not header:
                 raise ParseError()
         except ParseError as e:
-            raise EWSWarning('Unknown XML response from %s (response: %s)' % (protocol.service_endpoint, r.text)) from e
+            raise_from(EWSWarning('Unknown XML response from %s (response: %s)' % (protocol.service_endpoint, r.text)), e)
         info = header.find('{%s}ServerVersionInfo' % TNS)
         if info is None:
             raise TransportError('No ServerVersionInfo in response: %s' % r.text)
@@ -275,7 +276,7 @@ class Version:
             if not header:
                 raise ParseError()
         except ParseError as e:
-            raise EWSWarning('Unknown XML response from %s (response: %s)' % (response, response.text)) from e
+            raise_from(EWSWarning('Unknown XML response from %s (response: %s)' % (response, response.text)), e)
         info = header.find('{%s}ServerVersionInfo' % TNS)
         if info is None:
             raise TransportError('No ServerVersionInfo in response: %s' % response.text)
