@@ -270,7 +270,7 @@ class QuerySet:
         new_qs.return_format = self.VALUES
         return new_qs
 
-    def values_list(self, *args, flat=False):
+    def values_list(self, flat=False, *args):
         try:
             self._check_fields(args)
         except ValueError as e:

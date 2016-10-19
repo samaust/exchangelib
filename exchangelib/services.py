@@ -229,7 +229,8 @@ class EWSService(object):
             try:
                 container = self._get_element_container(message=msg, name=self.element_container_name)
                 if isinstance(container, ElementType):
-                    yield from self._get_elements_in_container(container=container)
+                    for element in self._get_elements_in_container(container=container):
+                        yield element
                 else:
                     yield (container, None)
             except (ErrorTimeoutExpired, ErrorBatchProcessingStopped):
@@ -269,7 +270,8 @@ class PagingEWSMixIn(EWSService):
                 if container is None:
                     raise TransportError('No %s elements in ResponseMessage (%s)' % (self.element_container_name,
                                                                                      xml_to_str(page)))
-                yield from self._get_elements_in_container(container=container)
+                for element in self._get_elements_in_container(container=container):
+                    yield element
             if not offset:
                 break
 
@@ -740,7 +742,9 @@ class GetFolder(EWSAccountService):
     def call(self, folder, **kwargs):
         return self._get_elements(payload=self._get_payload(folder, **kwargs), account=folder.account)
 
-    def _get_payload(self, folder, additional_fields=None, shape=IdOnly):
+    def _get_payload(self, distinguished_folder_id, additional_fields=None, shape=IdOnly):
+        from .credentials import DELEGATE
+        from .folders import Mailbox
         getfolder = create_element('m:%s' % self.SERVICE_NAME)
         foldershape = create_element('m:FolderShape')
         add_xml_child(foldershape, 't:BaseShape', shape)

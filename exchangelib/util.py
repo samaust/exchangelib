@@ -2,7 +2,6 @@ import re
 from xml.etree.ElementTree import Element
 import logging
 import time
-from collections import Iterator
 from future.utils import PY3
 from future.moves.urllib.parse import urlparse
 

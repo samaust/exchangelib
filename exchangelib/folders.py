@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Implements a selection of the folders and folder items found in an Exchange account.
 
