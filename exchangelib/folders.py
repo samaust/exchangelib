@@ -80,7 +80,7 @@ class BodyType(str):
     pass
 
 
-class EWSElement:
+class EWSElement(object):
     ELEMENT_NAME = None
 
     __slots__ = tuple()

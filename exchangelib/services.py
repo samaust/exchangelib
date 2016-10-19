@@ -245,13 +245,13 @@ class EWSService(object):
 class EWSAccountService(EWSService):
     def __init__(self, account):
         self.account = account
-        super().__init__(protocol=account.protocol)
+        super(EWSAccountService, self).__init__(protocol=account.protocol)
 
 
 class EWSFolderService(EWSAccountService):
     def __init__(self, folder):
         self.folder = folder
-        super().__init__(account=folder.account)
+        super(EWSFolderService, self).__init__(account=folder.account)
 
 
 class PagingEWSMixIn(EWSService):
@@ -738,9 +738,6 @@ class GetFolder(EWSAccountService):
     def __init__(self, *args, **kwargs):
         super(GetFolder, self).__init__(*args, **kwargs)
         self.element_name = '{%s}Folder' % TNS
-
-    def call(self, folder, **kwargs):
-        return self._get_elements(payload=self._get_payload(folder, **kwargs), account=folder.account)
 
     def _get_payload(self, distinguished_folder_id, additional_fields=None, shape=IdOnly):
         from .credentials import DELEGATE
