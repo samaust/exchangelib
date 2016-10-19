@@ -1,5 +1,5 @@
 from logging import getLogger
-from locale import getlocale
+from locale import getdefaultlocale
 from collections import defaultdict
 
 from cached_property import threaded_cached_property
@@ -33,7 +33,7 @@ class Account:
             raise ValueError("primary_smtp_address '%s' is not an email address" % primary_smtp_address)
         self.primary_smtp_address = primary_smtp_address
         self.fullname = fullname
-        self.locale = locale or getlocale()[0]
+        self.locale = locale or getdefaultlocale()[0]
         assert isinstance(self.locale, str)
         # Assume delegate access if individual credentials are provided. Else, assume service user with impersonation
         self.access_type = access_type or (DELEGATE if credentials else IMPERSONATION)
